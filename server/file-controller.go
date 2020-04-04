@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 )
 
 var serverUrl = os.Getenv("SERVER_URL")
@@ -17,17 +16,16 @@ var serverUrl = os.Getenv("SERVER_URL")
 func init() {
 	router := mux.NewRouter()
 	fileSubrouter := router.PathPrefix("/file").Subrouter()
-	fileSubrouter.HandleFunc("/{id:[0-9]+}/info", fileInfo)
-	fileSubrouter.HandleFunc("/{id:[0-9]+}/download", downloadFile)
+	fileSubrouter.HandleFunc("/{id}/info", fileInfo)
+	fileSubrouter.HandleFunc("/{id}/download", downloadFile)
 	fileSubrouter.HandleFunc("/upload", uploadFile)
 
 	http.Handle("/file/", router)
 }
 
-
 func fileInfo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
+	id := vars["id"]
 
 	var sfm, err = service.LoadFileMetadata(id)
 
@@ -38,8 +36,8 @@ func fileInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var fm = FileMetadata{Id:sfm.Id, Name:sfm.Name, FileType:sfm.FileType,
-		Description:sfm.Description, Size:sfm.Size, Url:resolveUrl(sfm.Id)}
+	var fm = FileMetadata{Id: sfm.Id, Name: sfm.Name, FileType: sfm.FileType,
+		Description: sfm.Description, Size: sfm.Size, Url: resolveUrl(sfm.Id)}
 
 	w.Header().Set("Content-Type", "application/json")
 	js, _ := json.Marshal(fm)
@@ -47,9 +45,9 @@ func fileInfo(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func downloadFile(w http.ResponseWriter, r *http.Request)  {
+func downloadFile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
+	id := vars["id"]
 
 	data, errFile := service.ReadFile(id)
 	var sfm, errMeta = service.LoadFileMetadata(id)
@@ -65,7 +63,7 @@ func downloadFile(w http.ResponseWriter, r *http.Request)  {
 	_, _ = w.Write(data)
 }
 
-func uploadFile(w http.ResponseWriter, r *http.Request)  {
+func uploadFile(w http.ResponseWriter, r *http.Request) {
 
 	var Buf bytes.Buffer
 	file, header, errFileForm := r.FormFile("file")
@@ -100,20 +98,19 @@ func uploadFile(w http.ResponseWriter, r *http.Request)  {
 		_, _ = w.Write([]byte("500 - Can't save the file!"))
 		return
 	}
-	_, _ = w.Write([]byte(strconv.Itoa(res.Id)))
+	_, _ = w.Write([]byte(res.Id))
 }
 
-
-func resolveUrl(id int) string {
-	var url = serverUrl + "/file/" + strconv.Itoa(id) + "/download"
+func resolveUrl(id string) string {
+	var url = serverUrl + "/file/" + id + "/download"
 	return url
 }
 
 type FileMetadata struct {
-	Id int `json:"id"`
-	Name string `json:"name"`
-	FileType string `json:"type"`
-	Size int64 `json:"size"`
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+	FileType    string `json:"type"`
+	Size        int64  `json:"size"`
 	Description string `json:"description"`
-	Url string `json:"url"`
+	Url         string `json:"url"`
 }
