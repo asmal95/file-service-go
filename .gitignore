@@ -1,0 +1,19 @@
+# собранные бинарники
+/fileservice
+/fileservice-go
+
+# локальные данные хранилища
+/data/
+*.meta
+
+# секреты и локальные env (ключи НИКОГДА не коммитить)
+/etc/fileservice/
+.env
+*.env
+*api_key*
+*secret*
+
+# IDE и мусор ОС
+.idea/
+.vscode/
+.DS_Store

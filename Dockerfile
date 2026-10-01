@@ -1,25 +1,28 @@
-# Start from a Debian image with the latest version of Go installed
-# and a workspace (GOPATH) configured at /go.
-FROM golang as builder
+# syntax=docker/dockerfile:1
+FROM golang:1.26-bookworm AS builder
 
-# Copy the local package files to the container's workspace.
-COPY . /go/src/fileservice
-WORKDIR /go/src/fileservice
-# Build the outyet command inside the container.
-# (You may fetch or manage dependencies here,
-# either manually or with a tool like "godep".)
-RUN go get -d -v
+WORKDIR /src
+COPY go.mod ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/fileservice . \
+    && mkdir -p /data
 
-RUN go install /go/src/fileservice
-
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags="-w -s" -o /go/bin/fileservice
 FROM scratch
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-# Copy our static executable
-COPY --from=builder /go/bin/fileservice /go/bin/fileservice
 
-# Run the outyet command by default when the container starts.
-ENTRYPOINT ["/go/bin/fileservice"]
+COPY --from=builder /out/fileservice /fileservice
+COPY --from=builder --chown=65532:65532 /data /data
 
+ENV PORT=8080 \
+    FILES_DIRECTORY=/data \
+    MAX_FILE_SIZE=10MB \
+    MAX_STORAGE_SIZE=1GB
+
+VOLUME /data
 EXPOSE 8080
+USER 65532:65532
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
+    CMD ["/fileservice", "-healthcheck"]
+
+ENTRYPOINT ["/fileservice"]
